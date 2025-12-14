@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Causal Chat - Vector Clocks</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <i class="fas fa-network-wired"></i>
+                <h1>Causal Chat</h1>
+                <span class="version">v1.0</span>
+            </div>
+            
+            <div class="user-profile">
+                <div class="avatar" id="userAvatar">?</div>
+                <div class="user-info">
+                    <input type="text" id="usernameInput" placeholder="Enter username" maxlength="20">
+                    <div class="connection-status">
+                        <span class="status-dot" id="statusDot"></span>
+                        <span id="connectionStatus">Disconnected</span>
+                    </div>
+                </div>
+                <button id="connectBtn" class="btn btn-primary">
+                    <i class="fas fa-plug"></i> Connect
+                </button>
+            </div>
+            
+            <div class="room-section">
+                <h3><i class="fas fa-comments"></i> Chat Room</h3>
+                <div class="room-item active">
+                    <i class="fas fa-hashtag"></i>
+                    <span>Main Room</span>
+                    <span class="badge" id="roomCount">0</span>
+                </div>
+            </div>
+            
+            <div class="online-users">
+                <h3><i class="fas fa-users"></i> Online Users</h3>
+                <div class="users-list" id="usersList">
+                    <div class="empty-users">
+                        <i class="fas fa-user-friends"></i>
+                        <p>No users online</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="system-stats">
+                <div class="stat-item">
+                    <i class="fas fa-message"></i>
+                    <div>
+                        <span class="stat-value" id="totalMessages">0</span>
+                        <span class="stat-label">Messages</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <span class="stat-value" id="vectorSize">0</span>
+                        <span class="stat-label">Vector Size</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-database"></i>
+                    <div>
+                        <span class="stat-value" id="bufferSize">0</span>
+                        <span class="stat-label">Buffered</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Chat Area -->
+        <div class="main-chat">
+            <div class="chat-header">
+                <div class="header-left">
+                    <h2>Main Chat Room</h2>
+                    <div class="room-description">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Messages ordered by causal relationships</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="clock-display">
+                        <i class="fas fa-clock"></i>
+                        <span>Your Vector Clock:</span>
+                        <code id="currentVectorClock">[0]</code>
+                    </div>
+                    <div class="header-actions">
+                        <button id="clearChatBtn" class="btn btn-icon" title="Clear Chat">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <button id="helpBtn" class="btn btn-icon" title="Help">
+                            <i class="fas fa-question-circle"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="messages-container" id="messagesContainer">
+                <div class="welcome-message">
+                    <i class="fas fa-rocket"></i>
+                    <h3>Welcome to Causal Chat</h3>
+                    <p>Messages are ordered based on causal relationships, not arrival time</p>
+                    <p class="hint">Enter a username and click Connect to join</p>
+                </div>
+                <!-- Messages will appear here -->
+            </div>
+            
+            <div class="typing-indicator" id="typingIndicator"></div>
+            
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <div class="input-actions">
+                        <button class="btn-icon" id="simulateBtn" title="Toggle Simulation">
+                            <i class="fas fa-hourglass-half"></i>
+                        </button>
+                    </div>
+                    <div class="message-input-wrapper">
+                        <textarea id="messageInput" 
+                                  placeholder="Type a message (Press Enter to send, Shift+Enter for new line)"
+                                  disabled
+                                  rows="1"></textarea>
+                    </div>
+                    <button id="sendBtn" class="btn btn-send" disabled>
+                        <i class="fas fa-paper-plane"></i> Send
+                    </button>
+                </div>
+                <div class="simulation-controls" id="simulationControls" style="display: none;">
+                    <label>
+                        <input type="checkbox" id="enableSimulation">
+                        Enable Network Delay Simulation
+                    </label>
+                    <div class="delay-control">
+                        <span>Delay:</span>
+                        <input type="range" id="delaySlider" min="0" max="5000" value="2000">
+                        <span id="delayValue">2000ms</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel -->
+        <div class="control-panel">
+            <div class="panel-header">
+                <h3><i class="fas fa-sliders-h"></i> Control Panel</h3>
+            </div>
+            
+            <div class="panel-content">
+                <!-- Vector Clocks -->
+                <div class="vector-clocks-display">
+                    <h4>Vector Clocks <span class="badge" id="userCount">0</span></h4>
+                    <div class="clocks-grid" id="clocksGrid">
+                        <div class="empty-clocks">
+                            <i class="fas fa-clock"></i>
+                            <p>No vector clocks to display</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Message Buffer -->
+                <div class="buffer-display">
+                    <h4>Message Buffer <span class="badge" id="bufferCount">0</span></h4>
+                    <div class="buffer-list" id="bufferList">
+                        <div class="empty-buffer">
+                            <i class="fas fa-inbox"></i>
+                            <p>No buffered messages</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <h4>Quick Actions</h4>
+                    <button class="action-btn" id="testConcurrent">
+                        <i class="fas fa-random"></i> Test Concurrent
+                    </button>
+                    <button class="action-btn" id="testCausal">
+                        <i class="fas fa-link"></i> Test Causal Chain
+                    </button>
+                    <button class="action-btn" id="refreshData">
+                        <i class="fas fa-sync"></i> Refresh Data
+                    </button>
+                </div>
+            </div>
+            
+            <div class="panel-footer">
+                <div class="system-info">
+                    <i class="fas fa-server"></i>
+                    <span>Status: <span id="serverStatus">Offline</span></span>
+                    <span class="info-separator">|</span>
+                    <i class="fas fa-microchip"></i>
+                    <span>Latency: <span id="latencyValue">0ms</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-question-circle"></i> How Causal Chat Works</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="help-section">
+                    <h4>What are Vector Clocks?</h4>
+                    <p>Vector clocks track causal relationships in distributed systems:</p>
+                    <ul>
+                        <li>Each user has a vector [time_user1, time_user2, ...]</li>
+                        <li>On sending: Increment your own counter</li>
+                        <li>On receiving: Merge clocks element-wise (max)</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <h4>Causal Ordering Rules</h4>
+                    <p>A message is displayed when:</p>
+                    <ul>
+                        <li>For sender: message.time[sender] = local.time[sender] + 1</li>
+                        <li>For others: message.time[i] ≤ local.time[i]</li>
+                    </ul>
+                    <p>If not ready, message is buffered until dependencies arrive.</p>
+                </div>
+                <div class="help-section">
+                    <h4>Keyboard Shortcuts</h4>
+                    <div class="shortcuts-grid">
+                        <div class="shortcut-item">
+                            <kbd>Enter</kbd>
+                            <span>Send message</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <kbd>Shift + Enter</kbd>
+                            <span>New line</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <kbd>Ctrl + K</kbd>
+                            <span>Clear chat</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <kbd>Ctrl + S</kbd>
+                            <span>Toggle simulation</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
