@@ -19,7 +19,18 @@ class VectorClockManager {
         return this.getClockArray();
     }
 
-    
+    merge(otherClockArray) {
+        if (!otherClockArray || !Array.isArray(otherClockArray)) return;
+        
+        console.log('Merging clocks:', otherClockArray);
+        otherClockArray.forEach(([userId, timestamp]) => {
+            const current = this.clock.get(userId) || 0;
+            if (timestamp > current) {
+                this.clock.set(userId, timestamp);
+                console.log(`Updated ${userId} from ${current} to ${timestamp}`);
+            }
+        });
+    }
 
     getClock() {
         return new Map(this.clock);
@@ -785,7 +796,13 @@ class CausalChatApp {
         });
     }
 
-    
+    setupAutoResize() {
+        const textarea = document.getElementById('messageInput');
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
     setupAutoResize() {
     const textarea = document.getElementById('messageInput');
     
@@ -1027,86 +1044,82 @@ class CausalChatApp {
     }
 
     handleChatMessage(data) {
-    console.log('Received chat message:', data);
-    
-    if (!data.userId || !data.username) {
-        console.error('Invalid message data:', data);
-        return;
-    }
-    
-    // Ensure sender is in our users list
-    if (!this.users.has(data.userId)) {
-        const newUser = {
-            id: data.userId,
-            username: data.username,
-            joinedAt: Date.now(),
-            vectorClock: []
-        };
-        this.users.set(data.userId, newUser);
-        if (this.vectorClock) {
-            this.vectorClock.addUser(data.userId);
+        console.log('Received chat message:', data);
+        
+        if (!data.userId || !data.username) {
+            console.error('Invalid message data:', data);
+            return;
         }
-        this.updateUserDisplay();
-    }
-    
-    const message = {
-        id: data.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        userId: data.userId,
-        username: data.username,
-        text: data.text,
-        vectorClock: data.vectorClock || [],
-        timestamp: data.timestamp || Date.now(),
-        roomId: data.roomId || this.currentRoom,
-        metadata: data.metadata || {},
-        isOwn: data.userId === this.userId
-    };
-    
-    console.log('Processing message details:', {
-        id: message.id,
-        from: message.username,
-        text: message.text.substring(0, 50),
-        clock: message.vectorClock,
-        isOwn: message.isOwn,
-        myUserId: this.userId
-    });
-    
-    // CRITICAL FIX: Always merge vector clocks BEFORE checking causal readiness
-    if (this.vectorClock && message.vectorClock) {
-        console.log('Merging vector clocks before causal check');
-        console.log('Before merge:', Array.from(this.vectorClock.clock.entries()));
-        this.vectorClock.merge(message.vectorClock);
-        console.log('After merge:', Array.from(this.vectorClock.clock.entries()));
-    }
-    
-    // Process through causal ordering engine
-    const result = this.causalEngine.processMessage(
-        message,
-        this.vectorClock,
-        data.userId
-    );
-    
-    if (result.isCausallyReady) {
-        console.log('✅ Message causally ready, displaying');
         
-        // Display the message
-        this.displayMessage(message);
+        // Ensure sender is in our users list
+        if (!this.users.has(data.userId)) {
+            const newUser = {
+                id: data.userId,
+                username: data.username,
+                joinedAt: Date.now(),
+                vectorClock: []
+            };
+            this.users.set(data.userId, newUser);
+            if (this.vectorClock) {
+                this.vectorClock.addUser(data.userId);
+            }
+            this.updateUserDisplay();
+        }
         
-        // Deliver any buffered messages that are now ready
-        this.deliverBufferedMessages();
-    } else {
-        console.log('⏳ Message buffered:', result.reason);
+        const message = {
+            id: data.id || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            userId: data.userId,
+            username: data.username,
+            text: data.text,
+            vectorClock: data.vectorClock || [],
+            timestamp: data.timestamp || Date.now(),
+            roomId: data.roomId || this.currentRoom,
+            metadata: data.metadata || {},
+            isOwn: data.userId === this.userId
+        };
         
-        // Buffer the message
-        this.bufferMessage(message);
+        console.log('Processing message details:', {
+            id: message.id,
+            from: message.username,
+            text: message.text.substring(0, 50),
+            clock: message.vectorClock,
+            isOwn: message.isOwn
+        });
         
-        this.ui.showNotification(
-            `Message from ${message.username} buffered (${result.reason})`,
-            'warning'
+        // Process through causal ordering engine
+        const result = this.causalEngine.processMessage(
+            message,
+            this.vectorClock,
+            data.userId
         );
+        
+        if (result.isCausallyReady) {
+            console.log('✅ Message causally ready, displaying');
+            
+            // Display the message
+            this.displayMessage(message);
+            
+            // Merge vector clocks
+            if (this.vectorClock) {
+                this.vectorClock.merge(message.vectorClock);
+            }
+            
+            // Deliver any buffered messages that are now ready
+            this.deliverBufferedMessages();
+        } else {
+            console.log('⏳ Message buffered:', result.reason);
+            
+            // Buffer the message
+            this.bufferMessage(message);
+            
+            this.ui.showNotification(
+                `Message from ${message.username} buffered (${result.reason})`,
+                'warning'
+            );
+        }
+        
+        this.updateDisplay();
     }
-    
-    this.updateDisplay();
-}
 
     handleSystemMessage(data) {
         console.log('System message:', data.message);

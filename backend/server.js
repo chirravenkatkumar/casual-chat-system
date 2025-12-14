@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { v4 as uuidv4 } from 'uuid';
 
 /* =========================================================
-   HTTP SERVER (REQUIRED FOR RENDER HEALTH CHECK)
+   HTTP SERVER (REQUIRED FOR RENDER)
 ========================================================= */
 const server = createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -15,16 +15,12 @@ const server = createServer((req, res) => {
 ========================================================= */
 const wss = new WebSocketServer({ server });
 
-/* =========================================================
-   CHAT SERVER LOGIC
-========================================================= */
 class ChatServer {
     constructor() {
-        this.clients = new Map(); // ws -> client info
-        this.rooms = new Map(); // roomId -> room info
-        this.messageHistory = new Map(); // roomId -> messages
-        this.userStats = new Map(); // userId -> stats
-
+        this.clients = new Map();
+        this.rooms = new Map();
+        this.messageHistory = new Map();
+        this.userStats = new Map();
         this.initDefaultRoom();
     }
 
@@ -108,8 +104,8 @@ class ChatServer {
         if (!room) return;
 
         room.users.add(client.id);
-
         client.vectorClock = new Map();
+
         this.clients.forEach(existingClient => {
             if (
                 existingClient.roomId === client.roomId &&
