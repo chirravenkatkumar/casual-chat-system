@@ -836,7 +836,7 @@ class CausalChatApp {
         this.username = username;
         
         try {
-            this.ws = new WebSocket('ws://localhost:8080');
+            this.ws = new WebSocket('https://casual-chat-system.onrender.com');
             
             this.ws.onopen = () => this.handleConnectionOpen();
             this.ws.onmessage = (event) => this.handleMessage(event);
